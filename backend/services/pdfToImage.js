@@ -27,4 +27,25 @@ const convertPdfToImage = async (inputPath, quality = 'high', format = 'png') =>
   return { outputPath, outputName, size: stats.size };
 };
 
-module.exports = { convertPdfToImage };
+// Add new function: convertPdfAllPages
+const convertPdfAllPages = async (inputPath, quality = 'medium', format = 'png') => {
+  // Get page count first
+  const { stdout } = await execAsync(`pdfinfo "${inputPath}" | grep Pages | awk '{print $2}'`);
+  const pageCount = parseInt(stdout.trim()) || 1;
+
+  const results = [];
+  for (let i = 0; i < pageCount; i++) {
+    const outputName = `${uuidv4()}-page${i + 1}.${format}`;
+    const outputPath = path.join(process.cwd(), 'processed', outputName);
+    const dpi = dpiMap[quality] || 150;
+    const q = qualityMap[quality] || 75;
+    const cmd = `convert -density ${dpi} -quality ${q} "${inputPath}[${i}]" "${outputPath}"`;
+    await execAsync(cmd);
+    if (fs.existsSync(outputPath)) {
+      results.push({ outputPath, outputName, page: i + 1, size: fs.statSync(outputPath).size });
+    }
+  }
+  return results; // array of converted pages
+};
+
+module.exports = { convertPdfToImage, convertPdfAllPages };
