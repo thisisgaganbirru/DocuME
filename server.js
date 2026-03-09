@@ -1,29 +1,20 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
-const helmet = require('helmet');
 const config = require('./backend/config');
 const logger = require('./backend/utils/logger');
+const { corsOptions, helmetConfig, cors } = require('./backend/middleware/security');
+const { limiter } = require('./backend/middleware/rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security headers
-app.use(helmet());
-
-// CORS
-app.use(cors({
-  origin: config.frontendUrl,
-  credentials: true
-}));
-
-// Rate limiter (owned by Security Agent: backend/middleware/rateLimiter.js)
-// app.use(require('./backend/middleware/rateLimiter'));
-
-// JSON body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware
+app.use(helmetConfig);
+app.use(cors(corsOptions));
+app.use(limiter);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 // Auth routes (owned by Auth Agent: backend/routes/auth.js)
