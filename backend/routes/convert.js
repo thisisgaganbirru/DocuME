@@ -6,6 +6,8 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 const auth = require('../middleware/auth');
+const auditMiddleware = require('../middleware/auditLogger');
+const audit = require('../utils/auditLog');
 const { convertPdfToImage } = require('../services/pdfToImage');
 const { convertImageToPdf } = require('../services/imageToPdf');
 const { compressPdf } = require('../services/compressPdf');
@@ -34,7 +36,7 @@ const cleanupFiles = (filePaths) => {
 };
 
 // POST /pdf-to-image
-router.post('/pdf-to-image', auth, upload.single('file'), async (req, res) => {
+router.post('/pdf-to-image', auth, auditMiddleware('PDF_TO_IMAGE'), upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -56,12 +58,13 @@ router.post('/pdf-to-image', auth, upload.single('file'), async (req, res) => {
   } catch (err) {
     cleanupFiles(inputPath);
     console.error('PDF to image error:', err);
+    audit.conversionFailure(req.user?.id, 'PDF_TO_IMAGE', req.file?.filename, err);
     res.status(500).json({ error: 'Conversion failed', details: err.message });
   }
 });
 
 // POST /image-to-pdf
-router.post('/image-to-pdf', auth, upload.array('files'), async (req, res) => {
+router.post('/image-to-pdf', auth, auditMiddleware('IMAGE_TO_PDF'), upload.array('files'), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No files uploaded' });
   }
@@ -81,12 +84,13 @@ router.post('/image-to-pdf', auth, upload.array('files'), async (req, res) => {
   } catch (err) {
     cleanupFiles(inputPaths);
     console.error('Image to PDF error:', err);
+    audit.conversionFailure(req.user?.id, 'IMAGE_TO_PDF', req.files?.[0]?.filename, err);
     res.status(500).json({ error: 'Conversion failed', details: err.message });
   }
 });
 
 // POST /compress-pdf
-router.post('/compress-pdf', auth, upload.single('file'), async (req, res) => {
+router.post('/compress-pdf', auth, auditMiddleware('COMPRESS_PDF'), upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -107,12 +111,13 @@ router.post('/compress-pdf', auth, upload.single('file'), async (req, res) => {
   } catch (err) {
     cleanupFiles(inputPath);
     console.error('Compress PDF error:', err);
+    audit.conversionFailure(req.user?.id, 'COMPRESS_PDF', req.file?.filename, err);
     res.status(500).json({ error: 'Compression failed', details: err.message });
   }
 });
 
 // POST /split-pdf
-router.post('/split-pdf', auth, upload.single('file'), async (req, res) => {
+router.post('/split-pdf', auth, auditMiddleware('SPLIT_PDF'), upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -138,12 +143,13 @@ router.post('/split-pdf', auth, upload.single('file'), async (req, res) => {
   } catch (err) {
     cleanupFiles(inputPath);
     console.error('Split PDF error:', err);
+    audit.conversionFailure(req.user?.id, 'SPLIT_PDF', req.file?.filename, err);
     res.status(500).json({ error: 'Split failed', details: err.message });
   }
 });
 
 // POST /merge-pdfs
-router.post('/merge-pdfs', auth, upload.array('files'), async (req, res) => {
+router.post('/merge-pdfs', auth, auditMiddleware('MERGE_PDFS'), upload.array('files'), async (req, res) => {
   if (!req.files || req.files.length < 2) {
     return res.status(400).json({ error: 'At least 2 files are required for merging' });
   }
@@ -163,6 +169,7 @@ router.post('/merge-pdfs', auth, upload.array('files'), async (req, res) => {
   } catch (err) {
     cleanupFiles(inputPaths);
     console.error('Merge PDFs error:', err);
+    audit.conversionFailure(req.user?.id, 'MERGE_PDFS', req.files?.[0]?.filename, err);
     res.status(500).json({ error: 'Merge failed', details: err.message });
   }
 });

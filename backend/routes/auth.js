@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { generateAuthUrl, exchangeCodeForUserInfo } = require('../services/googleOAuth');
 const authMiddleware = require('../middleware/auth');
+const audit = require('../utils/auditLog');
 
 let logger;
 try { logger = require('../utils/logger'); } catch(e) { logger = console; }
@@ -52,11 +53,14 @@ router.post('/google-callback', async (req, res) => {
       ? logger.info('Login success', { email: user.email, id: user.id })
       : logger.log('Login success', { email: user.email, id: user.id });
 
+    audit.loginSuccess(user, req.ip);
+
     res.json({ token, user });
   } catch (err) {
     logger.error
       ? logger.error('Login failure', err)
       : logger.error('Login failure', err);
+    audit.loginFailure(err.message, req.ip);
     res.status(500).json({ error: 'Authentication failed' });
   }
 });
@@ -73,6 +77,8 @@ router.post('/logout', (req, res) => {
     logger.info
       ? logger.info('Logout', { user: req.user || 'unknown' })
       : logger.log('Logout', { user: req.user || 'unknown' });
+
+    audit.logout(req.user?.id, req.ip);
 
     res.json({ message: 'Logged out successfully' });
   } catch (err) {

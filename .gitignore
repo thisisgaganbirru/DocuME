@@ -3,5 +3,7 @@ node_modules/
 uploads/*
 processed/*
 *.log
+logs/*.log
+!logs/.gitkeep
 client/node_modules/
 client/build/
