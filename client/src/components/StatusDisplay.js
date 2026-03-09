@@ -1,41 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 
-const TYPE_CONFIG = {
-  success: {
-    icon: '✅',
-    label: 'Success',
-  },
-  error: {
-    icon: '❌',
-    label: 'Error',
-  },
-  loading: {
-    icon: null, // spinner
-    label: 'Processing',
-  },
-  info: {
-    icon: 'ℹ️',
-    label: 'Info',
-  },
-};
-
-function StatusDisplay({ message, type = 'info', downloadUrl, filename, onDismiss }) {
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    // Auto-dismiss success messages after 5 seconds (only if no download available)
-    if (type === 'success' && !downloadUrl) {
-      timerRef.current = setTimeout(() => {
-        onDismiss && onDismiss();
-      }, 5000);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [type, downloadUrl, onDismiss]);
-
-  const config = TYPE_CONFIG[type] || TYPE_CONFIG.info;
-
+function StatusDisplay({ message, type, downloadUrl, filename, onDismiss }) {
   const handleDownload = () => {
     if (!downloadUrl) return;
     const a = document.createElement('a');
@@ -44,45 +9,37 @@ function StatusDisplay({ message, type = 'info', downloadUrl, filename, onDismis
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-
-    // Revoke object URL if it was created via URL.createObjectURL
+    // Revoke blob URL after use
     if (downloadUrl.startsWith('blob:')) {
       window.URL.revokeObjectURL(downloadUrl);
     }
   };
 
+  const classMap = {
+    success: 'status-success',
+    error: 'status-error',
+    loading: 'status-loading',
+  };
+
+  const statusClass = classMap[type] || 'status-info';
+
   return (
-    <div className={`status-display ${type}`} role="alert" aria-live="polite">
-      <div className="status-icon">
-        {type === 'loading' ? (
-          <div
-            className="spinner"
-            style={{ width: 20, height: 20, borderWidth: 2 }}
-          ></div>
-        ) : (
-          config.icon
-        )}
-      </div>
-
+    <div className={`status-display ${statusClass}`} role="alert">
       <div className="status-content">
-        <div className="status-message">{message}</div>
-
-        {downloadUrl && (
-          <button className="status-download-btn" onClick={handleDownload}>
-            ⬇️ Download {filename || 'File'}
-          </button>
-        )}
+        <span className="status-message">{message}</span>
+        <div className="status-actions">
+          {downloadUrl && type === 'success' && (
+            <button className="download-btn" onClick={handleDownload}>
+              Download {filename || 'file'}
+            </button>
+          )}
+          {onDismiss && type !== 'loading' && (
+            <button className="dismiss-btn" onClick={onDismiss} aria-label="Dismiss">
+              &times;
+            </button>
+          )}
+        </div>
       </div>
-
-      {type !== 'loading' && (
-        <button
-          className="status-dismiss"
-          onClick={onDismiss}
-          aria-label="Dismiss notification"
-        >
-          ×
-        </button>
-      )}
     </div>
   );
 }
