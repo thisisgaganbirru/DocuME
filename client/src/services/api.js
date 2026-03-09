@@ -58,3 +58,6 @@ export const mergePdfs = (formData, token) =>
 
 export const getPdfInfo = (formData, token) =>
   fetch(`${API_BASE}/pdf/info`, { method: 'POST', headers: getHeaders(token), body: formData }).then(r => r.json());
+
+export const exportUserData = (token) => fetch(`${API_BASE}/user/export`, { headers: getHeaders(token) });
+export const deleteAccount = (token) => fetch(`${API_BASE}/user/delete`, { method: 'DELETE', headers: getHeaders(token) });

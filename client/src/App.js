@@ -4,6 +4,8 @@ import GoogleLoginButton from './components/GoogleLoginButton';
 import Dashboard from './components/Dashboard';
 import ConversionTool from './components/ConversionTool';
 import StatusDisplay from './components/StatusDisplay';
+import ConsentBanner from './components/ConsentBanner';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import * as api from './services/api';
 
 const TOOLS = {
@@ -51,6 +53,8 @@ function App() {
   const [message, setMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -66,6 +70,13 @@ function App() {
       }
     }
     setIsValidating(false);
+  }, []);
+
+  // Listen for showPrivacy custom event dispatched by ConsentBanner
+  useEffect(() => {
+    const handleShowPrivacy = () => setShowPrivacy(true);
+    window.addEventListener('showPrivacy', handleShowPrivacy);
+    return () => window.removeEventListener('showPrivacy', handleShowPrivacy);
   }, []);
 
   const handleLogin = (userData, userToken) => {
@@ -90,6 +101,43 @@ function App() {
     setMessage(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+  };
+
+  const handleExportData = async () => {
+    try {
+      const response = await api.exportUserData(token);
+      if (!response.ok) throw new Error('Export failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `my-data-${Date.now()}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setMessage({ text: 'Data export failed. Please try again.', type: 'error' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account and all associated data? This action cannot be undone.\n\nYour session will be cleared and any temporary files will be deleted within 1 hour.'
+    );
+    if (!confirmed) return;
+    try {
+      const response = await api.deleteAccount(token);
+      if (!response.ok) throw new Error('Deletion failed');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('gdpr_consent');
+      alert('Your data deletion request has been processed. You will now be signed out.');
+      setUser(null);
+      setToken(null);
+      setActiveTool(null);
+      setMessage(null);
+    } catch (err) {
+      setMessage({ text: 'Account deletion failed. Please try again.', type: 'error' });
+    }
   };
 
   const handleToolSelect = (toolKey) => {
@@ -195,13 +243,30 @@ function App() {
             <br />
             Sign in to get started.
           </p>
-          <GoogleLoginButton onLogin={handleLogin} />
+          {consentGiven ? (
+            <GoogleLoginButton onLogin={handleLogin} />
+          ) : (
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              Please accept the privacy notice below to continue.
+            </p>
+          )}
           <p className="login-footer">
             Files are automatically deleted after 1 hour.
             <br />
             Your data stays private and secure.
+            <br />
+            <button
+              onClick={() => setShowPrivacy(true)}
+              style={{ background: 'none', border: 'none', color: '#667eea', cursor: 'pointer', textDecoration: 'underline', fontSize: '13px', padding: 0, marginTop: '4px' }}
+            >
+              Privacy Policy
+            </button>
           </p>
         </div>
+        <ConsentBanner onAccept={() => setConsentGiven(true)} />
+        {showPrivacy && (
+          <PrivacyPolicy onClose={() => setShowPrivacy(false)} token={null} />
+        )}
       </div>
     );
   }
@@ -229,7 +294,13 @@ function App() {
           user={user}
           onToolSelect={handleToolSelect}
           onLogout={handleLogout}
+          onExportData={handleExportData}
+          onDeleteAccount={handleDeleteAccount}
+          onShowPrivacy={() => setShowPrivacy(true)}
         />
+      )}
+      {showPrivacy && (
+        <PrivacyPolicy onClose={() => setShowPrivacy(false)} token={token} />
       )}
     </div>
   );
