@@ -21,6 +21,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Routes
 app.use('/api/auth', require('./backend/routes/auth'));
 app.use('/api/convert', require('./backend/routes/convert'));
+app.use('/api/pdf', require('./backend/routes/pdfInfo'));
+app.use('/api/user', require('./backend/routes/user'));
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -55,3 +55,6 @@ export const mergePdfs = (formData, token) =>
     headers: getHeaders(token),
     body: formData,
   });
+
+export const getPdfInfo = (formData, token) =>
+  fetch(`${API_BASE}/pdf/info`, { method: 'POST', headers: getHeaders(token), body: formData }).then(r => r.json());
