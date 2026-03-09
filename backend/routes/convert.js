@@ -13,6 +13,7 @@ const { convertImageToPdf } = require('../services/imageToPdf');
 const { compressPdf } = require('../services/compressPdf');
 const { splitPdf } = require('../services/splitPdf');
 const { mergePdfs } = require('../services/mergePdf');
+const queue = require('../services/queue');
 
 // Multer setup with disk storage
 const storage = multer.diskStorage({
@@ -72,7 +73,7 @@ router.post('/image-to-pdf', auth, auditMiddleware('IMAGE_TO_PDF'), upload.array
   const inputPaths = req.files.map(f => f.path);
 
   try {
-    const result = await convertImageToPdf(inputPaths);
+    const result = await queue.add(() => convertImageToPdf(inputPaths));
     cleanupFiles(inputPaths);
 
     res.download(result.outputPath, result.outputName, (err) => {
@@ -157,7 +158,7 @@ router.post('/merge-pdfs', auth, auditMiddleware('MERGE_PDFS'), upload.array('fi
   const inputPaths = req.files.map(f => f.path);
 
   try {
-    const result = await mergePdfs(inputPaths);
+    const result = await queue.add(() => mergePdfs(inputPaths));
     cleanupFiles(inputPaths);
 
     res.download(result.outputPath, result.outputName, (err) => {
